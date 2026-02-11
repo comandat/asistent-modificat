@@ -1,13 +1,9 @@
 # Stage 1: Build Nanobot Engine
-FROM golang:1.24-bookworm AS builder
+# Use 'rc' tag to get the absolute latest Go version (1.25+)
+FROM golang:rc-bookworm AS builder
 
 WORKDIR /src
 RUN git clone https://github.com/nanobot-ai/nanobot.git .
-
-# Hack: Downgrade go version requirement if it's too high (e.g. 1.25)
-RUN sed -i 's/go 1\.[0-9]\+/go 1.24/g' go.mod || true
-
-# Build
 RUN make
 
 # Stage 2: Runtime Environment
