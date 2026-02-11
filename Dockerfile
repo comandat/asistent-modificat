@@ -1,14 +1,22 @@
+# Stage 1: Build Nanobot Engine
+FROM golang:1.24-bookworm AS builder
+
+WORKDIR /src
+RUN git clone https://github.com/nanobot-ai/nanobot.git .
+# Fix potential go.mod issues if needed, but 1.24 should handle recent versions
+RUN make
+
+# Stage 2: Runtime Environment
 FROM python:3.11-bookworm
 
 WORKDIR /app
 
-# 1. Install System Dependencies
+# Install System Dependencies (Runtime)
 RUN apt-get update && apt-get install -y \
     curl \
     git \
     nodejs \
     npm \
-    golang-go \
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
@@ -24,29 +32,19 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     libpango-1.0-0 \
     libcairo2 \
-    make \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Install Nanobot (Build from Source)
-# We clone the official repo or use the one provided. 
-# Since we don't have the source in THIS repo, we clone it.
-RUN git clone https://github.com/nanobot-ai/nanobot.git /tmp/nanobot-src \
-    && cd /tmp/nanobot-src \
-    && make \
-    && mv bin/nanobot /usr/local/bin/nanobot \
-    && rm -rf /tmp/nanobot-src
+# Copy Nanobot Binary from Builder
+COPY --from=builder /src/bin/nanobot /usr/local/bin/nanobot
 
-# 3. Install Python Dependencies
+# Install Python Deps
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. Install Playwright Browsers
+# Install Playwright Browsers
 RUN playwright install chromium
 
-# 5. Copy Project Files
 COPY . .
 
 EXPOSE 8501
-
-# 6. Run Dashboard
 CMD ["streamlit", "run", "dashboard.py", "--server.address=0.0.0.0", "--server.port=8501"]
