@@ -2,12 +2,13 @@ FROM python:3.11-bookworm
 
 WORKDIR /app
 
-# Install system dependencies for Playwright (manual list for stability)
+# 1. Install System Dependencies
 RUN apt-get update && apt-get install -y \
     curl \
     git \
     nodejs \
     npm \
+    golang-go \
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
@@ -23,17 +24,29 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     libpango-1.0-0 \
     libcairo2 \
+    make \
     && rm -rf /var/lib/apt/lists/*
 
+# 2. Install Nanobot (Build from Source)
+# We clone the official repo or use the one provided. 
+# Since we don't have the source in THIS repo, we clone it.
+RUN git clone https://github.com/nanobot-ai/nanobot.git /tmp/nanobot-src \
+    && cd /tmp/nanobot-src \
+    && make \
+    && mv bin/nanobot /usr/local/bin/nanobot \
+    && rm -rf /tmp/nanobot-src
+
+# 3. Install Python Dependencies
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers
+# 4. Install Playwright Browsers
 RUN playwright install chromium
 
+# 5. Copy Project Files
 COPY . .
 
 EXPOSE 8501
 
-# Entrypoint script to handle setup if needed
+# 6. Run Dashboard
 CMD ["streamlit", "run", "dashboard.py", "--server.address=0.0.0.0", "--server.port=8501"]

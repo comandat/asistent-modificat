@@ -1,5 +1,5 @@
 import streamlit as st
-import os, json, time
+import os, json, time, subprocess
 
 st.set_page_config(page_title="Nanobot Control Center", layout="wide")
 
@@ -30,6 +30,16 @@ def save_env(config):
     time.sleep(1)
     st.rerun()
 
+def check_nanobot():
+    """Verify Nanobot installation"""
+    try:
+        result = subprocess.run(["nanobot", "version"], capture_output=True, text=True)
+        return True, result.stdout.strip()
+    except FileNotFoundError:
+        return False, "Nanobot binary NOT FOUND in path."
+    except Exception as e:
+        return False, str(e)
+
 def load_tasks():
     with open(TASKS_FILE, 'r') as f:
         lines = f.readlines()
@@ -52,6 +62,13 @@ def save_task(task_text):
 
 # Main Layout
 st.title("🤖 Nanobot Dashboard")
+
+# Health Check
+is_installed, version_msg = check_nanobot()
+if is_installed:
+    st.sidebar.success(f"✅ Engine Active: {version_msg}")
+else:
+    st.sidebar.error(f"❌ Engine Error: {version_msg}")
 
 # Settings Check
 current_env = load_env()
@@ -86,11 +103,14 @@ with tab2:
     if prompt := st.chat_input("New task or instruction..."):
         if not has_key:
             st.error("Please configure API Key in Settings first!")
+        elif not is_installed:
+            st.error("Nanobot Engine is missing. Cannot execute.")
         else:
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.markdown(prompt)
             
             save_task(prompt)
+            # Future: Execute nanobot run here via subprocess
             response = f"Added task: **{prompt}** to Backlog."
             st.session_state.messages.append({"role": "assistant", "content": response})
             with st.chat_message("assistant"): st.markdown(response)
