@@ -1,9 +1,14 @@
 # Stage 1: Build Nanobot Engine
-# Use 'rc' tag to get the absolute latest Go version (1.25+)
-FROM golang:rc-bookworm AS builder
+FROM golang:1.24-bookworm AS builder
 
 WORKDIR /src
 RUN git clone https://github.com/nanobot-ai/nanobot.git .
+
+# Patch: Force go.mod to accept Go 1.24 (since 1.25 docker image is not available)
+RUN sed -i 's/^go .*/go 1.24/g' go.mod && \
+    sed -i 's/^go .*/go 1.24/g' pkg/tools/flows.go || true
+
+# Build
 RUN make
 
 # Stage 2: Runtime Environment
