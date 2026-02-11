@@ -1,30 +1,50 @@
 # SKILL.md
 
-Use this when setting up project infrastructure (Docker, CI/CD, Deployment).
+Use this to generate **production-ready** infrastructure (Docker, CI/CD, Deployment).
+This skill ensures the application runs ANYWHERE, reliably.
+
+## Philosophy
+**Build Once, Run Everywhere.**
+Security First. No secrets in Git.
 
 ## Decision Tree
-Identify Project Type:
-- **Node.js/TS**: Has `package.json`?
-    - Yes -> Use `templates/node.Dockerfile` -> Create `Dockerfile`
-    - Has `vitest`/`playwright`? -> Add CI steps to run tests.
-- **Python**: Has `requirements.txt` / `pyproject.toml`?
-    - Yes -> Use `templates/python.Dockerfile` -> Create `Dockerfile`
-    - Has `pytest`? -> Add CI steps to run tests.
-- **Static HTML**: Has `index.html` only?
-    - Yes -> Use `nginx` image in Dockerfile.
 
-## Execution Protocol
-1. **Dockerize**:
-   - Create `.dockerignore` (node_modules, venv, .git).
-   - Create `Dockerfile` based on template.
-   - Build & Test: `docker build -t app . && docker run --rm app`.
+### 1. START: Analyze Project
+- **Language?**
+  - Node.js (`package.json`) -> Use `templates/node.Dockerfile`.
+  - Python (`requirements.txt`) -> Use `templates/python.Dockerfile`.
+  - Go (`go.mod`) -> Use `templates/go.Dockerfile`.
 
-2. **CI/CD Pipeline (GitHub Actions)**:
-   - Create `.github/workflows/ci.yml`.
-   - Use `templates/ci.yml` as base.
-   - Customize: Add `npm test` or `pytest` commands based on project tools.
-   - Verify: Push to repo -> Check Actions tab.
+### 2. EXECUTION: Generate Artifacts
 
-3. **Orchestration (Optional)**:
-   - If DB needed (Postgres/Redis) -> Create `docker-compose.yml`.
-   - Link app service with DB service.
+#### A. Dockerization
+1. **Security:** Create `.dockerignore` (exclude `node_modules`, `.env`, `.git`, `venv`).
+2. **Efficiency:** Use **Multi-Stage Builds**.
+   - Stage 1: Build (install deps, compile).
+   - Stage 2: Runtime (copy artifacts, minimal image).
+3. **Configuration:** Use `ENV` variables for dynamic config.
+   - Create `.env.example` (template).
+   - **NEVER** commit `.env` to Git.
+
+#### B. CI/CD Pipeline (GitHub Actions)
+1. **Create Workflow:** `.github/workflows/ci.yml`.
+2. **Trigger:** `push` on `main`, `pull_request`.
+3. **Steps:**
+   - Checkout code.
+   - Setup Environment (Node/Python).
+   - Install Dependencies (Cache enabled).
+   - Run Linter (`npm run lint`).
+   - Run Tests (`npm test`).
+   - Build (`npm run build`).
+
+#### C. Orchestration (Docker Compose)
+- Does the app need a Database?
+  - Yes: Create `docker-compose.yml`.
+  - Services: `app`, `db` (Postgres/Redis), `adminer` (optional).
+  - Networking: Use `depends_on`.
+  - Persistence: Use named volumes for DB data.
+
+## Quality Standards
+- **Healthcheck:** The Dockerfile MUST expose a port and include a `HEALTHCHECK` instruction or verify startup.
+- **Minimal Size:** Use `alpine` or `slim` images.
+- **Reproducible:** Pin versions (e.g., `node:20-alpine`, not `node:latest`).

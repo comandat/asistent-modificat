@@ -1,17 +1,35 @@
 # SKILL.md
 
 Use this to access Long-Term Semantic Memory (Vector Search).
+This skill allows the agent to recall past projects, solutions, and mistakes.
 
-## Setup
-First time? Run: `pip install chromadb`
+## Philosophy
+**NEVER START FROM SCRATCH.**
+Always check memory first. Always update memory last.
 
 ## Decision Tree
-Is user asking a complex question or referencing past work?
-- Yes -> SEARCH: `python projects/nanobot-config/skills/memory/scripts/memory_engine.py search "QUESTION" -n 5`
 
-Did you just finish a significant task or learn something new?
-- Yes -> STORE: `python projects/nanobot-config/skills/memory/scripts/memory_engine.py add "LESSON_LEARNED_TEXT" --metadata '{"project": "NAME"}'`
+### 1. START: Before Any Task
+**Search Memory:** `python projects/nanobot-config/skills/memory/scripts/memory_engine.py search "{query}" -n 5`
+- Is this a known problem? (e.g., "React hydration error")
+  - Yes: **Read Solution** -> Apply fix -> Skip research.
+  - No: Continue as usual.
+- Is this a new project?
+  - Yes: Search for "setup template" or "boilerplate".
+  - No: Search for "current project status".
 
-## Example Usage
-- **Find Solution:** "How did I fix the CSS bug last time?" -> `search "CSS layout fix webshop"`
-- **Remember Lesson:** "Never use float:left for layout." -> `add "Do not use float:left, prefer flex/grid. It causes bugs." --metadata '{"topic": "css"}'`
+### 2. END: After Completion
+**Store Lesson:** `python projects/nanobot-config/skills/memory/scripts/memory_engine.py add "{text}" --metadata '{json}'`
+- Did you solve a tough bug?
+  - Yes: Store the **Solution** + **Error Message**.
+  - Metadata: `{"topic": "debugging", "tech": "react", "error": "hydration"}`
+- Did you learn a new library?
+  - Yes: Store the **Usage Example**.
+  - Metadata: `{"topic": "tutorial", "tech": "library_name"}`
+- Did you make a significant design choice?
+  - Yes: Store the **Reasoning**.
+  - Metadata: `{"project": "name", "type": "decision"}`
+
+## Example Prompts
+- **Context Injection:** "Before writing the CSS, search memory for 'brutalist design patterns'."
+- **Learning:** "Store this lesson: 'Avoid `float:left`, use Flexbox/Grid. It breaks layout.' Metadata: `{'topic': 'css', 'bad_practice': 'float'}`."
