@@ -55,7 +55,9 @@ st.title("🤖 Nanobot Dashboard")
 
 # Settings Check
 current_env = load_env()
-if not current_env.get("OPENAI_API_KEY") and not current_env.get("ANTHROPIC_API_KEY"):
+has_key = any([current_env.get("OPENAI_API_KEY"), current_env.get("ANTHROPIC_API_KEY"), current_env.get("GOOGLE_API_KEY")])
+
+if not has_key:
     st.warning("⚠️ Nanobot is not configured. Please go to Settings.")
 
 tab1, tab2, tab3, tab4 = st.tabs(["Kanban Board", "Chat & Command", "Canvas Preview", "⚙️ Settings"])
@@ -82,7 +84,7 @@ with tab2:
             st.markdown(msg["content"])
 
     if prompt := st.chat_input("New task or instruction..."):
-        if not current_env:
+        if not has_key:
             st.error("Please configure API Key in Settings first!")
         else:
             st.session_state.messages.append({"role": "user", "content": prompt})
@@ -113,14 +115,20 @@ with tab3:
 
 with tab4:
     st.header("Configuration")
+    st.info("Enter your API keys below. They are stored locally in .env")
+    
     with st.form("config_form"):
+        google_key = st.text_input("Google API Key (Gemini)", value=current_env.get("GOOGLE_API_KEY", ""), type="password")
         openai_key = st.text_input("OpenAI API Key", value=current_env.get("OPENAI_API_KEY", ""), type="password")
         anthropic_key = st.text_input("Anthropic API Key", value=current_env.get("ANTHROPIC_API_KEY", ""), type="password")
-        model = st.selectbox("Model", ["gpt-4o", "claude-3-opus", "gpt-3.5-turbo"], index=0)
+        
+        st.divider()
+        model = st.text_input("Model Name (Custom)", value=current_env.get("NANOBOT_MODEL", "gemini-1.5-pro-latest"), help="E.g., gemini-1.5-pro, gpt-4-turbo, claude-3-5-sonnet")
         
         submitted = st.form_submit_button("Save Configuration")
         if submitted:
             new_config = {
+                "GOOGLE_API_KEY": google_key,
                 "OPENAI_API_KEY": openai_key,
                 "ANTHROPIC_API_KEY": anthropic_key,
                 "NANOBOT_MODEL": model
