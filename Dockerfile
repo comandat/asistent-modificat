@@ -3,8 +3,10 @@ FROM golang:1.25-bookworm AS builder
 
 WORKDIR /src
 
-# Install Node.js & pnpm (Required for building Nanobot UI assets)
-RUN apt-get update && apt-get install -y nodejs npm && \
+# Install Node.js 20 (Required for Nanobot UI assets)
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
     npm install -g pnpm
 
 RUN git clone https://github.com/nanobot-ai/nanobot.git .
@@ -19,8 +21,6 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     curl \
     git \
-    nodejs \
-    npm \
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
@@ -37,6 +37,10 @@ RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libcairo2 \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20 (Runtime)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs
 
 # Copy Nanobot Binary from Builder
 COPY --from=builder /src/bin/nanobot /usr/local/bin/nanobot
