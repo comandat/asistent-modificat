@@ -1,8 +1,12 @@
 # Stage 1: Build Nanobot Engine
-# Using official Go 1.25 image (Bookworm based)
 FROM golang:1.25-bookworm AS builder
 
 WORKDIR /src
+
+# Install Node.js & pnpm (Required for building Nanobot UI assets)
+RUN apt-get update && apt-get install -y nodejs npm && \
+    npm install -g pnpm
+
 RUN git clone https://github.com/nanobot-ai/nanobot.git .
 RUN make
 
