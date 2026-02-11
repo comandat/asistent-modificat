@@ -5,10 +5,30 @@ st.set_page_config(page_title="Nanobot Control Center", layout="wide")
 
 WORK_DIR = "workspace"
 TASKS_FILE = "workspace/TASKS.md"
-PROGRESS_FILE = "workspace/PROGRESS.md"
+ENV_FILE = ".env"
 
 if not os.path.exists(WORK_DIR): os.makedirs(WORK_DIR)
 if not os.path.exists(TASKS_FILE): open(TASKS_FILE, 'w').close()
+
+def load_env():
+    """Load config from .env"""
+    env = {}
+    if os.path.exists(ENV_FILE):
+        with open(ENV_FILE, 'r') as f:
+            for line in f:
+                if '=' in line:
+                    key, val = line.strip().split('=', 1)
+                    env[key] = val
+    return env
+
+def save_env(config):
+    """Save config to .env"""
+    with open(ENV_FILE, 'w') as f:
+        for k, v in config.items():
+            if v: f.write(f"{k}={v}\n")
+    st.success("Configuration Saved! Restarting Nanobot...")
+    time.sleep(1)
+    st.rerun()
 
 def load_tasks():
     with open(TASKS_FILE, 'r') as f:
@@ -30,9 +50,15 @@ def save_task(task_text):
     with open(TASKS_FILE, 'a') as f:
         f.write(f"\n- [ ] {task_text}")
 
+# Main Layout
 st.title("🤖 Nanobot Dashboard")
 
-tab1, tab2, tab3 = st.tabs(["Kanban Board", "Chat & Command", "Canvas Preview"])
+# Settings Check
+current_env = load_env()
+if not current_env.get("OPENAI_API_KEY") and not current_env.get("ANTHROPIC_API_KEY"):
+    st.warning("⚠️ Nanobot is not configured. Please go to Settings.")
+
+tab1, tab2, tab3, tab4 = st.tabs(["Kanban Board", "Chat & Command", "Canvas Preview", "⚙️ Settings"])
 
 with tab1:
     tasks = load_tasks()
@@ -56,16 +82,17 @@ with tab2:
             st.markdown(msg["content"])
 
     if prompt := st.chat_input("New task or instruction..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.markdown(prompt)
-        
-        # Action: Add to TASKS.md
-        save_task(prompt)
-        response = f"Added task: **{prompt}** to Backlog."
-        
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        with st.chat_message("assistant"): st.markdown(response)
-        st.rerun()
+        if not current_env:
+            st.error("Please configure API Key in Settings first!")
+        else:
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"): st.markdown(prompt)
+            
+            save_task(prompt)
+            response = f"Added task: **{prompt}** to Backlog."
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            with st.chat_message("assistant"): st.markdown(response)
+            st.rerun()
 
     st.divider()
     uploaded_file = st.file_uploader("Upload Project Files")
@@ -82,4 +109,20 @@ with tab3:
             html_content = f.read()
         st.components.v1.html(html_content, height=600, scrolling=True)
     else:
-        st.info("No 'index.html' found in workspace yet. Ask Nanobot to build a site!")
+        st.info("No 'index.html' found yet. Ask Nanobot to build one!")
+
+with tab4:
+    st.header("Configuration")
+    with st.form("config_form"):
+        openai_key = st.text_input("OpenAI API Key", value=current_env.get("OPENAI_API_KEY", ""), type="password")
+        anthropic_key = st.text_input("Anthropic API Key", value=current_env.get("ANTHROPIC_API_KEY", ""), type="password")
+        model = st.selectbox("Model", ["gpt-4o", "claude-3-opus", "gpt-3.5-turbo"], index=0)
+        
+        submitted = st.form_submit_button("Save Configuration")
+        if submitted:
+            new_config = {
+                "OPENAI_API_KEY": openai_key,
+                "ANTHROPIC_API_KEY": anthropic_key,
+                "NANOBOT_MODEL": model
+            }
+            save_env(new_config)
